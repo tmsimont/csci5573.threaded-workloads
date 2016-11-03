@@ -1,8 +1,12 @@
 //-----------------------------------------------------------------------
-// Matrix Multiplication - Sequential version to run on single CPU core only
+//  Pthreads matrix multiply
+//  This creates a stupid amount of threads to inefficiently 
+//  perform matrix multiplication. The point of this is to 
+//  create a workload with a large number of threads competing over
+//  a shared resource
 //-----------------------------------------------------------------------
-//  Written by: Gita Alaghband, Lan Vu 
-//  Updated in 8/8/2011
+//  Original code by: Gita Alaghband, Lan Vu 
+//  Modified by Trevor Simonton, Anthony Pfaff, Cory Linfield, Alex Klein
 //-----------------------------------------------------------------------
 #include <iostream>
 #include <iomanip>
@@ -13,6 +17,7 @@
 #include <pthread.h>
 using namespace std;
 
+// globals for p threads
 struct helper {
 	pthread_t t;
 	int idx;
@@ -23,6 +28,7 @@ float **a,**b,**c;
 pthread_mutex_t** cmutexes;
 helper **threads;
 int locked = 0;
+
 //-----------------------------------------------------------------------
 //   Get user input for matrix dimension or printing option
 //-----------------------------------------------------------------------
@@ -34,8 +40,8 @@ bool GetUserInput(int argc, char *argv[],int& isPrint)
 	{
 		cout << "Arguments:<X> [<Y>]" << endl;
 		cout << "X : Matrix size [X x X]" << endl;
-		cout << "Y = 1: print the input/output matrix if X < 10" << endl;
-		cout << "Y <> 1 or missing: does not print the input/output matrix" << endl;
+		cout << "Y = 1: Use mutex lock" << endl;
+		cout << "Y <> 1 or missing: does not use mutex lock" << endl;
 
 		isOK = false;
 	}
@@ -48,14 +54,6 @@ bool GetUserInput(int argc, char *argv[],int& isPrint)
 			cout << "Matrix size must be larger than 0" <<endl;
 			isOK = false;
 		}
-
-		//is print the input/output matrix
-		/*
-		if (argc >=3)
-			isPrint = (atoi(argv[2])==1 && n <=9)?1:0;
-		else
-			isPrint = 0;
-		*/
 		locked = 0;
 		if (argc >=3)
 			locked = (atoi(argv[2])==1 && n <=9)?1:0;
@@ -94,12 +92,15 @@ void InitializeMatrix(float** &x,float value)
 			pthread_mutex_init(&(cmutexes[i][j]), NULL);
 		}
 	}
+
+	// create helpers for threads
 	threads = new helper*[n*n*n];
 	for (int i = 0 ; i < n*n*n; ++i) {
 		threads[i] = new helper();
 		threads[i]->idx = i;
 	}
 }
+
 //------------------------------------------------------------------
 //Delete matrix x[n x n]
 //------------------------------------------------------------------
@@ -108,6 +109,7 @@ void DeleteMatrix(float **x)
 	delete[] x[0];
 	delete[] x; 
 }
+
 //------------------------------------------------------------------
 //Print matrix	
 //------------------------------------------------------------------
@@ -127,10 +129,9 @@ void PrintMatrix(float **x)
 //Do Matrix Multiplication 
 //------------------------------------------------------------------
 
-
+// individual result matrix cell thread callback
 void* row_col_sum(void* idp) {
 	int id = *(int*)idp;
-	int id2 = id;
 	int k = id % n; 
 	id = id/n;
 	int j = id % n;
@@ -138,7 +139,6 @@ void* row_col_sum(void* idp) {
 	int i = id % n;
 	if (locked == 1) {
 		pthread_mutex_lock (&(cmutexes[i][j]));
-		///cout << id2 << endl;
 		c[i][j] += a[i][k]*b[k][j];
 		pthread_mutex_unlock (&(cmutexes[i][j]));
 	}
@@ -147,6 +147,7 @@ void* row_col_sum(void* idp) {
 	}
 	pthread_exit(NULL);
 }
+
 void MultiplyMatrix()
 {
 	int rc;
@@ -174,15 +175,6 @@ int main(int argc, char *argv[])
 	InitializeMatrix(b,9.0);
 	InitializeMatrix(c,0.0);
 
-	//Print the input matrices
-	if (isPrint==1)
-	{
-		cout<< "Matrix a[n][n]:" << endl;
-		PrintMatrix(a); 
-		cout<< "Matrix b[n][n]:" << endl;
-		PrintMatrix(b); 
-	}
-
 	runtime = clock()/(float)CLOCKS_PER_SEC;
 
 	MultiplyMatrix();
@@ -195,16 +187,7 @@ int main(int argc, char *argv[])
 
 	runtime = clock()/(float)CLOCKS_PER_SEC - runtime;
 
-	//Print the output matrix
-	/*
-	if (isPrint==1)
-	{
-		cout<< "Output matrix:" << endl;
-		PrintMatrix(c); 
-	}
-	cout<< "Program runs in " << setiosflags(ios::fixed) << setprecision(2) << runtime << " seconds\n"; 
-	*/
-
+	// check for errors in result
 	bool ok = true;
 	for (int i = 0; i < n; ++i) {
 		for (int j = 0; j < n; ++j) {
@@ -215,7 +198,7 @@ int main(int argc, char *argv[])
 		cout << "great" << endl;
 	else
 		cout << "ungreat" << endl;
-	
+
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	
 	DeleteMatrix(c);	
