@@ -25,7 +25,6 @@ struct helper {
 
 int n = 0;
 float **a,**b,**c;
-pthread_mutex_t** cmutexes;
 helper **threads;
 int locked = 0;
 
@@ -82,17 +81,6 @@ void InitializeMatrix(float** &x,float value)
 		}
 	}
 
-	cmutexes = new pthread_mutex_t*[n];
-	cmutexes[0] = new pthread_mutex_t[n*n];
-	for (int i = 1; i < n; i++)	cmutexes[i] = cmutexes[i-1] + n;
-
-	// init locks
-	for (int i = 0 ; i < n; ++i) {
-		for (int j = 0 ; j < n; ++j) {
-			pthread_mutex_init(&(cmutexes[i][j]), NULL);
-		}
-	}
-
 	// create helpers for threads
 	threads = new helper*[n*n*n];
 	for (int i = 0 ; i < n*n*n; ++i) {
@@ -137,26 +125,14 @@ void* row_col_sum(void* idp) {
 	int j = id % n;
 	id = id/n;
 	int i = id % n;
-	if (locked == 1) {
-		pthread_mutex_lock (&(cmutexes[i][j]));
-		c[i][j] += a[i][k]*b[k][j];
-		pthread_mutex_unlock (&(cmutexes[i][j]));
-	}
-	else {
-		c[i][j] += a[i][k]*b[k][j];
-	}
-	pthread_exit(NULL);
+	c[i][j] += a[i][k]*b[k][j];
 }
 
 void MultiplyMatrix()
 {
 	int rc;
 	for (int i = 0 ; i < n * n * n; i++) {
-		rc = pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx));
-		if (rc != 0) {
-			cout << "ERROR; return code from pthread_create() is " << rc << endl;
-			exit(-1);
-		}
+		row_col_sum(&(threads[i]->idx));
 	}
 }
 
@@ -181,10 +157,6 @@ int main(int argc, char *argv[])
 
 	void *status;
 
-	for(int t=0; t<n*n*n; t++) {
-		int rc = pthread_join(threads[t]->t, &status);
-	}
-
 	runtime = clock()/(float)CLOCKS_PER_SEC - runtime;
 
 	// check for errors in result
@@ -202,6 +174,5 @@ int main(int argc, char *argv[])
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	
 	DeleteMatrix(c);	
-	pthread_exit(NULL);
 	return 0;
 }
