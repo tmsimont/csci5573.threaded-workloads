@@ -1,5 +1,6 @@
 #!/bin/bash
-# run the given problem x amount of times.
+# run the given problem x amount of times, waiting until program completion
+# before running the next process
 # usage: ./multirun [program index] [matrix size] [0 or 1 use lock] [num times]
 
 for i in `seq 1 $4`
