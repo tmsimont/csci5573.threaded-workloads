@@ -156,12 +156,17 @@ void* row_col_sum(void* idp) {
 static inline void spinlock(int * lock)
 {
   
-	__asm__ __volatile__("1:"
+	__asm__ __volatile__(
+	"1: \n\t"
+	"PUSH {r0-r2}\n\t"
 	"LDR r0, %[lock]\n\t"
-	"LDR r2, =LOCK\n\t"
+	"LDR r2, =0x12345678\n\t"
 	"SWP r1, r2, [r0]\n\t"
 	"CMP r1,r2\n\t"
 	"BEQ 1b\n\t"
+	"POP {r0-r2}\n\t"
+	//"BX lr\n\t"
+	//"ENDP\n\t"
 	:
 	: [lock] "m" (lock)
 	: );
@@ -170,10 +175,14 @@ static inline void spinlock(int * lock)
 static inline void spinunlock(int * lock)
 {
 
-	__asm__ __volatile__("2:"
-	"LDR r1, =UNLOCK\n\t"
+	__asm__ __volatile__(
+  "PUSH {r0-r1}\n\t"	
+	"LDR r1, =0x87654321\n\t"
   "LDR r0, %[lock]\n\t"
 	"STR r1, [r0]\n\t"
+	"POP {r0-r1}\n\t"
+	//"BX lr\n\t"
+	//"ENDP\n\t"
 	:
 	: [lock] "m" (lock)
 	:	);
