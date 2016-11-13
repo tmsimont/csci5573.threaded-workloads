@@ -56,7 +56,7 @@ bool GetUserInput(int argc, char *argv[],int& isPrint)
 		}
 		locked = 0;
 		if (argc >=3)
-			locked = (atoi(argv[2])==1 && n <=9)?1:0;
+			locked = (atoi(argv[2])==1)?1:0;
 		else
 			locked = 0;
 
