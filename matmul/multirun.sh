@@ -10,10 +10,10 @@ do
 	fi
 	if [ $1 -eq 1 ]
 	then
-		./mm.out $2 $3
+		./mmmtx.out $2 $3
 	fi
 	if [ $1 -eq 2 ]
 	then
-		./mms.out $2 $3
+		./mmsem.out $2 $3
 	fi
 done
