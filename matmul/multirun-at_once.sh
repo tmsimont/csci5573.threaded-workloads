@@ -18,4 +18,9 @@ do
 	then
 		./mmsem.out $2 $3 >> $5 &
 	fi
+  if [ $1 -eq 3 ]
+	then
+	  ./mmts.out $2 $3 >> $5 &
+	fi
+
 done

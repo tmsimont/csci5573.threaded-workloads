@@ -7,18 +7,18 @@ for i in `seq 1 $4`
 do
 	if [ $1 -eq 0 ]
 	then
-		./mmseq.out $2 $3
+		/usr/bin/time ./mmseq.out $2 $3
 	fi
 	if [ $1 -eq 1 ]
 	then
-		./mmmtx.out $2 $3
+		/usr/bin/time ./mmmtx.out $2 $3
 	fi
 	if [ $1 -eq 2 ]
 	then
-		./mmsem.out $2 $3
+		/usr/bin/time ./mmsem.out $2 $3
 	fi
 	if [ $1 -eq 3 ]
 	then
-		./mmts.out $2 $3
+		/usr/bin/time ./mmts.out $2 $3
 	fi
 done

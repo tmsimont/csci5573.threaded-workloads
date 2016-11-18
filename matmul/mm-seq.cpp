@@ -167,9 +167,9 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (ok) 
-		cout << "ok\t" << runtime << endl;
+		cout << "ok\t";
 	else
-		cout << "wrong\t" << runtime << endl;
+		cout << "wrong\t";
 
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	

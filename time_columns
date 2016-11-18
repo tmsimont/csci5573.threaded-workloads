@@ -1,0 +1,12 @@
+e-Elapsed Time (s)
+S-CPU-Seconds in kernel mode
+U-CPU-Seconds in user mode
+P-Percentage of CPU that job got
+c-Involuntary context-switch
+w-Voluntary context-switch
+M-Maximum resident set size in KB
+t-Average resident set size in KB
+K-Average total memory use data+stack+text in KB
+Z-System Page Size (constant)
+F-Major page faults
+R-Minor/recoverable page faults
