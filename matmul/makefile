@@ -1,3 +1,5 @@
+matmul : matmul.cpp
+	g++ -lpthread matmul.cpp -o matmul.out
 mmmtx : mm-pthreads.mutex.cpp
 	g++ -lpthread mm-pthreads.mutex.cpp -o mmmtx.out
 mmts : mm-ts.cpp

@@ -78,3 +78,10 @@ scheduler to fight for CPU resources.
 See valid indices above for program selection.
 
 
+### matmul.out
+
+```
+ usage: ./matmul.out -h
+```
+
+This will give you the usage of the program
