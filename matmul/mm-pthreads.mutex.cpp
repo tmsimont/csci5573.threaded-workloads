@@ -18,6 +18,7 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string>
 
 #define handle_error_en(en, msg) \
         do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -43,15 +44,26 @@ pthread_mutex_t** cmutexes;
 sem_t** sems;
 bool useLock = true;
 int lockType = 0;
+int*** spinlocks;
+static inline void spinlock(int * a);
+static inline void spinunlock(int * b);
+int LOCK = 0;
+int UNLOCK = 1;
+
+// priority stuff
+sched_param pri;
+int priority = 0;
+int mpriority = 0;
+pthread_attr_t attr;
 
 //-----------------------------------------------------------------------
 //   Get user input for matrix dimension or printing option
 //-----------------------------------------------------------------------
 static void
-usage(char *prog_name, char *msg)
+usage(char *prog_name, string msg)
 {
-	if (msg != NULL)
-		fputs(msg, stderr);
+	if (msg.size() > 0)
+		fputs(msg.c_str(), stderr);
 
 	fprintf(stderr, "Usage: %s [options]\n", prog_name);
 	fprintf(stderr, "Options are:\n");
@@ -72,55 +84,87 @@ usage(char *prog_name, char *msg)
 
 bool GetUserInput(int argc, char *argv[])
 {
-
+	int opt;
+	// read program args
 	while ((opt = getopt(argc, argv, "n:p:Sl:m:")) != -1) {
 		switch (opt) {
-			case 'p': attr_sched_str = optarg;      break;
-			case 'm': main_sched_str = optarg;      break;
+			case 'p': priority = atoi(optarg);      break;
+			case 'm': mpriority = atoi(optarg);     break;
 			case 'S': useLock = false;						  break;
 			case 'l': lockType = atoi(optarg);		  break;
 			case 'n': n = atoi(optarg);						  break;
 			default:  usage(argv[0], "Unrecognized option\n");
 		}
 	}
+
+	// check matrix size
 	if (n<=0) 
 	{
 		cout << "Matrix size must be larger than 0" <<endl;
 		exit(EXIT_FAILURE);
 	}
+
+	// check lock type
 	if (lockType <= 0 || lockType > 4) {
 		cout << "Invalid lock type" <<endl;
 		exit(EXIT_FAILURE);
 	}
+
+	// set priority
+	const struct sched_param const_pri = {priority};
+	handle_error_en(pthread_attr_init(&attr),"pthread_attr_init");
+	handle_error_en(pthread_attr_setschedpolicy(&attr,SCHED_RR), "pthread_attr_setschedpolicy");
+	handle_error_en(pthread_attr_setschedparam(&attr,&const_pri), "pthread_attr_setschedparam");
+	handle_error_en(pthread_setschedparam(pthread_self(),SCHED_RR , &const_pri), "pthread_setschedparam");
 	return true;
 }
 
 //-----------------------------------------------------------------------
 //Initialize the value of matrix x[n x n]
 //-----------------------------------------------------------------------
-void InitializeMatrix(float** &x,float value)
+void InitializeMatrix(float** &x, float value)
 {
+	// allocate matrix
 	x = new float*[n];
 	x[0] = new float[n*n];
-
 	for (int i = 1; i < n; i++)	x[i] = x[i-1] + n;
 
+	// init matrix
 	for (int i = 0 ; i < n ; i++)
-	{
 		for (int j = 0 ; j < n ; j++)
-		{
 			x[i][j] = value;
-		}
-	}
 
+	// allocate spin locks
+	spinlocks = new int**[n];
+	spinlocks[0] = new int*[n*n];
+	for (int i = 1; i < n; i++)	spinlocks[i] = spinlocks[i-1] + n;
+
+	// init spin locks
+	for (int i = 0 ; i < n; ++i)
+		for (int j = 0 ; j < n; ++j)
+			spinlocks[i][j] = &UNLOCK;
+
+	// allocate mutex locks
 	cmutexes = new pthread_mutex_t*[n];
 	cmutexes[0] = new pthread_mutex_t[n*n];
 	for (int i = 1; i < n; i++)	cmutexes[i] = cmutexes[i-1] + n;
 
-	// init locks
+	// init mutex locks
 	for (int i = 0 ; i < n; ++i) {
 		for (int j = 0 ; j < n; ++j) {
 			pthread_mutex_init(&(cmutexes[i][j]), NULL);
+		}
+	}
+
+	// allocate semaphores
+	sems = new sem_t*[n];
+	sems[0] = new sem_t[n*n];
+	for (int i = 1; i < n; i++)	sems[i] = sems[i-1] + n;
+
+	// init semaphores
+	for (int i = 0 ; i < n; ++i) {
+		for (int j = 0 ; j < n; ++j) {
+			sem_init(&(sems[i][j]), 0, 1);
 		}
 	}
 
@@ -168,25 +212,111 @@ void* row_col_sum(void* idp) {
 	int j = id % n;
 	id = id/n;
 	int i = id % n;
-	if (locked == 1) {
-		pthread_mutex_lock (&(cmutexes[i][j]));
-		c[i][j] += a[i][k]*b[k][j];
-		pthread_mutex_unlock (&(cmutexes[i][j]));
-	}
-	else {
-		c[i][j] += a[i][k]*b[k][j];
+	switch (lockType) {
+		// mutex
+		case 1:
+			pthread_mutex_lock (&(cmutexes[i][j]));
+			c[i][j] += a[i][k]*b[k][j];
+			pthread_mutex_unlock (&(cmutexes[i][j]));
+			break;
+
+		// semaphore
+		case 2:
+			sem_wait (&(sems[i][j]));
+			c[i][j] += a[i][k]*b[k][j];
+			sem_post (&(sems[i][j]));
+			break;
+
+		// spin lock
+		case 3:
+			spinlock (spinlocks[i][j]);
+			c[i][j] += a[i][k]*b[k][j];
+			spinunlock (spinlocks[i][j]);
+			break;
+
+		// no lock
+		case 4:
+			c[i][j] += a[i][k]*b[k][j];
+			break;
+		default:
+			break;
 	}
 	pthread_exit(NULL);
+}
+
+void printPriInfo()
+{
+	int pol;
+	cout << "sched: " <<  pthread_getschedparam(pthread_self(), &pol, &pri) << endl;
+	cout << "Attr pri: " << pri.sched_priority << endl;
+	cout << "Attr pol: " << pol << ((pol==SCHED_RR)?"SCHED_RR":"") << endl;
+	switch(pol)
+	{
+		case SCHED_RR:
+			cout << "RR" << endl;
+			break;
+		case SCHED_OTHER:
+			cout << "OTHER" << endl;
+			break;
+		case SCHED_FIFO:
+			cout << "FIFO" << endl;
+			break;
+		case SCHED_IDLE:
+			cout << "IDLE" << endl;
+			break;
+		case SCHED_BATCH:
+			cout << "BATCH" << endl;
+			break;
+	}
+}
+
+static inline void spinlock(int * lock)
+{
+	__asm__ __volatile__(
+	"1: \n\t"
+	"PUSH {r0-r2}\n\t"
+	"LDR r0, %[lock]\n\t"
+	"LDR r2, =0x12345678\n\t"
+	"SWP r1, r2, [r0]\n\t"
+	"CMP r1,r2\n\t"
+	"BEQ 1b\n\t"
+	"POP {r0-r2}\n\t"
+	//"BX lr\n\t"
+	//"ENDP\n\t"
+	:
+	: [lock] "m" (lock)
+	: );
+}
+
+static inline void spinunlock(int * lock)
+{
+	__asm__ __volatile__(
+  "PUSH {r0-r1}\n\t"	
+	"LDR r1, =0x87654321\n\t"
+  "LDR r0, %[lock]\n\t"
+	"STR r1, [r0]\n\t"
+	"POP {r0-r1}\n\t"
+	//"BX lr\n\t"
+	//"ENDP\n\t"
+	:
+	: [lock] "m" (lock)
+	:	);
 }
 
 void MultiplyMatrix()
 {
 	int rc;
 	for (int i = 0 ; i < n * n * n; i++) {
-		rc = pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx));
-		if (rc != 0) {
-			cout << "ERROR; return code from pthread_create() is " << rc << endl;
-			exit(-1);
+		if (useLock) {
+			row_col_sum(&(threads[i]->idx));
+		}
+		else {
+		}
+			if(priority != 0 ) {
+				handle_error_en(pthread_create(&(threads[i]->t), &attr, row_col_sum, (void *) &(threads[i]->idx)),"pthread_create1");
+			}
+			else {
+				handle_error_en(pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx)),"pthread_create2");
 		}
 	}
 }
@@ -196,10 +326,9 @@ void MultiplyMatrix()
 //------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-	int	isPrint;
 	float runtime;
 
-	if (GetUserInput(argc,argv,isPrint)==false) return 1;
+	if (GetUserInput(argc,argv)==false) return 1;
 
 	//Initialize the value of matrix a, b, c
 	InitializeMatrix(a,9.0);
@@ -213,7 +342,9 @@ int main(int argc, char *argv[])
 	void *status;
 
 	for(int t=0; t<n*n*n; t++) {
-		int rc = pthread_join(threads[t]->t, &status);
+		if(priority == 1)
+			printPriInfo();
+		handle_error_en(pthread_join(threads[t]->t, &status), "pthread_join");
 	}
 
 	runtime = clock()/(float)CLOCKS_PER_SEC - runtime;

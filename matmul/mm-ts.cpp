@@ -121,7 +121,7 @@ void InitializeMatrix(float** &x,float value)
 	// init locks
 	for (int i = 0 ; i < n; ++i) {
 		for (int j = 0 ; j < n; ++j) {
-			cmutexes[i][j] = (int)&UNLOCK;
+			cmutexes[i][j] = &UNLOCK;
 		}
 	}
 
