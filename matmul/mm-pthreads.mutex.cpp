@@ -15,53 +15,84 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define handle_error_en(en, msg) \
+        do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define fpe(msg) fprintf(stderr, "\t%s", msg);
+
 using namespace std;
 
-// globals for p threads
+
+// helper for wrapping threads
 struct helper {
 	pthread_t t;
 	int idx;
 };
+helper **threads;
 
+// matrix 
 int n = 0;
 float **a,**b,**c;
+
+// locks/mutexes/semaphores
 pthread_mutex_t** cmutexes;
-helper **threads;
-int locked = 0;
+sem_t** sems;
+bool useLock = true;
+int lockType = 0;
 
 //-----------------------------------------------------------------------
 //   Get user input for matrix dimension or printing option
 //-----------------------------------------------------------------------
-bool GetUserInput(int argc, char *argv[],int& isPrint)
+static void
+usage(char *prog_name, char *msg)
 {
-	bool isOK = true;
+	if (msg != NULL)
+		fputs(msg, stderr);
 
-	if(argc < 2) 
-	{
-		cout << "Arguments:<X> [<Y>]" << endl;
-		cout << "X : Matrix size [X x X]" << endl;
-		cout << "Y = 1: Use mutex lock" << endl;
-		cout << "Y <> 1 or missing: does not use mutex lock" << endl;
+	fprintf(stderr, "Usage: %s [options]\n", prog_name);
+	fprintf(stderr, "Options are:\n");
+	fpe("-n<size> Set matrix size\n");
+	fpe("-p<prio> Set scheduling priority in\n");
+	fpe("                 thread attributes object\n");
+	fpe("-m<prio> Set scheduling policy and priority on\n");
+	fpe("                 main thread before pthread_create() call\n");
+	fpe("-S				Don't use threads, perform sequentially \n");
+	fpe("-l<lock> Set locking mechanism used during matrix\n");
+	fpe("                 updates. Options are:\n");
+	fpe("										1 : Mutex\n");
+	fpe("										2 : Semaphore\n");
+	fpe("										3 : Spinlock\n");
+	fpe("										4 : No lock\n");
+	exit(EXIT_FAILURE);
+}
 
-		isOK = false;
-	}
-	else 
-	{
-		//get matrix size
-		n = atoi(argv[1]);
-		if (n <=0) 
-		{
-			cout << "Matrix size must be larger than 0" <<endl;
-			isOK = false;
+bool GetUserInput(int argc, char *argv[])
+{
+
+	while ((opt = getopt(argc, argv, "n:p:Sl:m:")) != -1) {
+		switch (opt) {
+			case 'p': attr_sched_str = optarg;      break;
+			case 'm': main_sched_str = optarg;      break;
+			case 'S': useLock = false;						  break;
+			case 'l': lockType = atoi(optarg);		  break;
+			case 'n': n = atoi(optarg);						  break;
+			default:  usage(argv[0], "Unrecognized option\n");
 		}
-		locked = 0;
-		if (argc >=3)
-			locked = (atoi(argv[2])==1)?1:0;
-		else
-			locked = 0;
-
 	}
-	return isOK;
+	if (n<=0) 
+	{
+		cout << "Matrix size must be larger than 0" <<endl;
+		exit(EXIT_FAILURE);
+	}
+	if (lockType <= 0 || lockType > 4) {
+		cout << "Invalid lock type" <<endl;
+		exit(EXIT_FAILURE);
+	}
+	return true;
 }
 
 //-----------------------------------------------------------------------

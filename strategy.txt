@@ -1,0 +1,21 @@
+Busy process sitting to contend with workload
+	Can try multiple busy processes vs multiple busy threads
+	Workload runs and spits out metrics
+	Graph data
+	Vary priorities
+	Vary lock techniques
+
+Expect mutexes < sem < spin locks
+	Average waiting time
+
+
+Mess with the scheduler params:
+http://www.ibm.com/support/knowledgecenter/linuxonibm/liaai.saptuning/saptuningadjust.htm
+
+
+pthreads sys calls to tweak thread priority
+http://man7.org/linux/man-pages/man3/pthread_getschedparam.3.html
+
+
+sys calls to tweak process priority
+http://man7.org/linux/man-pages/man2/sched_setparam.2.html
