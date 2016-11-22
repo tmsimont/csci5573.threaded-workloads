@@ -16,10 +16,15 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#define handle_error_en(en, msg) \
+       if(en != 0) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
+
 int LOCK = 0;
 int UNLOCK = 1;
 
 using namespace std;
+
+
 
 // globals for p threads
 struct helper {
@@ -32,6 +37,10 @@ float **a,**b,**c;
 int** cmutexes;
 helper **threads;
 int locked = 0;
+int priority = 0;
+sched_param pri;
+
+pthread_attr_t attr;
 static inline void spinlock(int * a);
 static inline void spinunlock(int * b);
 //-----------------------------------------------------------------------
@@ -47,6 +56,7 @@ bool GetUserInput(int argc, char *argv[],int& isPrint)
 		cout << "X : Matrix size [X x X]" << endl;
 		cout << "Y = 1: Use mutex lock" << endl;
 		cout << "Y <> 1 or missing: does not use mutex lock" << endl;
+cout << "Z : integer priority between 1 and 99, default if not specified" << endl;
 
 		isOK = false;
 	}
@@ -65,6 +75,23 @@ bool GetUserInput(int argc, char *argv[],int& isPrint)
 		else
 			locked = 0;
 
+		if(argc >= 4)
+		{
+			priority = atoi(argv[3]);
+			if(priority < 1 || priority > 99)
+			{
+				cout << "Priority must be between 1 and 99, inclusive" << endl;
+				isOK = false;
+			}
+			else 
+			{
+				const struct sched_param const_pri = {priority};
+				handle_error_en(pthread_attr_init(&attr),"pthread_attr_init");
+				handle_error_en(pthread_attr_setschedpolicy(&attr,SCHED_RR), "pthread_attr_setschedpolicy");
+				handle_error_en(pthread_attr_setschedparam(&attr,&const_pri), "pthread_attr_setschedparam");
+				handle_error_en(pthread_setschedparam(pthread_self(),SCHED_RR , &const_pri), "pthread_setschedparam");
+			}
+		}
 	}
 	return isOK;
 }
@@ -153,6 +180,34 @@ void* row_col_sum(void* idp) {
 	pthread_exit(NULL);
 }
 
+void printPriInfo()
+{
+
+	int pol;
+	cout << "sched: " <<  pthread_getschedparam(pthread_self(), &pol, &pri) << endl;
+	cout << "Attr pri: " << pri.sched_priority << endl;
+	cout << "Attr pol: " << pol << ((pol==SCHED_RR)?"SCHED_RR":"") << endl;
+	switch(pol)
+	{
+		case SCHED_RR:
+			cout << "RR" << endl;
+			break;
+		case SCHED_OTHER:
+			cout << "OTHER" << endl;
+			break;
+		case SCHED_FIFO:
+			cout << "FIFO" << endl;
+			break;
+		case SCHED_IDLE:
+			cout << "IDLE" << endl;
+			break;
+		case SCHED_BATCH:
+			cout << "BATCH" << endl;
+			break;
+	}
+
+}
+
 static inline void spinlock(int * lock)
 {
   
@@ -192,12 +247,14 @@ static inline void spinunlock(int * lock)
 
 void MultiplyMatrix()
 {
-	int rc;
 	for (int i = 0 ; i < n * n * n; i++) {
-		rc = pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx));
-		if (rc != 0) {
-			cout << "ERROR; return code from pthread_create() is " << rc << endl;
-			exit(-1);
+		if(priority != 0 )
+		{
+			handle_error_en(pthread_create(&(threads[i]->t), &attr, row_col_sum, (void *) &(threads[i]->idx)),"pthread_create1");
+		}
+		else
+		{
+			handle_error_en(pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx)),"pthread_create2");
 		}
 	}
 }
@@ -224,7 +281,9 @@ int main(int argc, char *argv[])
 	void *status;
 
 	for(int t=0; t<n*n*n; t++) {
-		int rc = pthread_join(threads[t]->t, &status);
+		if(priority == 1)
+			printPriInfo();
+		handle_error_en(pthread_join(threads[t]->t, &status), "pthread_join");
 	}
 
 	runtime = clock()/(float)CLOCKS_PER_SEC - runtime;
@@ -247,3 +306,4 @@ int main(int argc, char *argv[])
 	pthread_exit(NULL);
 	return 0;
 }
+
