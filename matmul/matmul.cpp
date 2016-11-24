@@ -102,7 +102,7 @@ bool GetUserInput(int argc, char *argv[])
 {
 	int opt;
 	// read program args
-	while ((opt = getopt(argc, argv, "hDSn:l:p:m:")) != -1) {
+	while ((opt = getopt(argc, argv, "hDSn:l:p:m:t:T")) != -1) {
 		switch (opt) {
 			case 'p': priority = atoi(optarg);
 								prioritySet = true;						break;
