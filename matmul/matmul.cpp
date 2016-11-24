@@ -112,7 +112,7 @@ bool GetUserInput(int argc, char *argv[])
 			case 'l': lockType = atoi(optarg);		  break;
 			case 'n': n = atoi(optarg);						  break;
 			case 'h': usage(argv[0], "");					  break;
-			case 't': timerTime = atoi(optarg);			break;
+			case 't': timerType = atoi(optarg);			break;
 			case 'T': enableTimer = false;					break;
 			default:  usage(argv[0], "Unrecognized option\n");
 		}
@@ -198,8 +198,8 @@ void timerOutput()
 		time_t s;
 		long ms;
 
-		s = times[i].tv_sec;
-		ms = round(times[i].tv_nsec / 1.0e3);
+		s = times[i]->tv_sec;
+		ms = round(times[i]->tv_nsec / 1.0e3);
 
 		printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
 	}
@@ -302,8 +302,8 @@ void PrintMatrix(float **x)
 void* row_col_sum(void* idp) {
 	timespec start, end, elapsed;
 
-	int timesIndex = id;
 	int id = *(int*)idp;
+	int timesIndex = id;
 	int k = id % n;
 	id = id/n;
 	int j = id % n;
@@ -373,7 +373,7 @@ void* row_col_sum(void* idp) {
 		}
 
 		timespec_diff(&start, &end, &elapsed);
-		times[timesIndex] = elapsed;
+		times[timesIndex] = &elapsed;
 	}
 
 	if (!sequential)
