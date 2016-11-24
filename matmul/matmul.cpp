@@ -199,9 +199,17 @@ void timerOutput()
 		long ms;
 
 		s = times[i]->tv_sec;
-		ms = round(times[i]->tv_nsec / 1.0e3);
+		// milliseconds
+		//ms = round(times[i]->tv_nsec / 1.0e6);
+		//printf("Elapsed: %d.%03ld seconds in #%ld.\n", s, ms, i);
 
-		printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
+		// microseconds
+		//ms = round(times[i]->tv_nsec / 1.0e3);
+		//printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
+
+		// nanoseconds
+		ms = times[i]->tv_nsec;
+		printf("Elapsed: %d.%09ld seconds in #%ld.\n", s, ms, i);
 	}
 }
 
@@ -300,7 +308,7 @@ void PrintMatrix(float **x)
 
 // individual result matrix cell thread callback
 void* row_col_sum(void* idp) {
-	timespec start, end, elapsed;
+	timespec start, end;
 
 	int id = *(int*)idp;
 	int timesIndex = id;
@@ -372,8 +380,7 @@ void* row_col_sum(void* idp) {
 				break;
 		}
 
-		timespec_diff(&start, &end, &elapsed);
-		times[timesIndex] = &elapsed;
+		timespec_diff(&start, &end, times[timesIndex]);
 	}
 
 	if (!sequential)
