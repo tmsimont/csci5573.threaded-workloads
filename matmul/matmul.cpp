@@ -60,6 +60,11 @@ pthread_attr_t attr;
 // debugging arg
 bool debug = false;
 
+// Timing stuff
+timespec **times;
+int timerType = 0;
+bool enableTimer = true;
+
 //-----------------------------------------------------------------------
 //   Get user input for matrix dimension or printing option
 //-----------------------------------------------------------------------
@@ -84,6 +89,12 @@ usage(char *prog_name, string msg)
 	fpe("           1 : Mutex\n");
 	fpe("           2 : Semaphore\n");
 	fpe("           3 : Spinlock\n");
+	fpe("-t<tmr>  Set the timer type\n");
+	fpe("           0 : CLOCK_REALTIME \n");
+	fpe("           1 : CLOCK_MONOTONIC \n");
+	fpe("           2 : CLOCK_MONOTONIC_RAW \n");
+	fpe("           3 : CLOCK_THREAD_CPUTIME_ID \n");
+	fpe("-T       Disable timing output\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -101,6 +112,8 @@ bool GetUserInput(int argc, char *argv[])
 			case 'l': lockType = atoi(optarg);		  break;
 			case 'n': n = atoi(optarg);						  break;
 			case 'h': usage(argv[0], "");					  break;
+			case 't': timerTime = atoi(optarg);			break;
+			case 'T': enableTimer = false;					break;
 			default:  usage(argv[0], "Unrecognized option\n");
 		}
 	}
@@ -179,6 +192,19 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
 	return;
 }
 
+void timerOutput()
+{
+	for (int i = 0; i < n*n*n; i++) {
+		time_t s;
+		long ms;
+
+		s = times[i].tv_sec;
+		ms = round(times[i].tv_nsec / 1.0e3);
+
+		printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
+	}
+}
+
 //-----------------------------------------------------------------------
 //Initialize the value of matrix x[n x n]
 //-----------------------------------------------------------------------
@@ -234,6 +260,14 @@ void InitializeMatrix(float** &x, float value)
 		threads[i] = new helper();
 		threads[i]->idx = i;
 	}
+
+	if (enableTimer) {
+		// initialize timing structs
+		times = new timespec *[n * n * n];
+		for (int i = 0; i < n * n * n; i++) {
+			times[i] = new timespec();
+		}
+	}
 }
 
 //------------------------------------------------------------------
@@ -266,12 +300,33 @@ void PrintMatrix(float **x)
 
 // individual result matrix cell thread callback
 void* row_col_sum(void* idp) {
+	timespec start, end, elapsed;
+
+	int timesIndex = id;
 	int id = *(int*)idp;
-	int k = id % n; 
+	int k = id % n;
 	id = id/n;
 	int j = id % n;
 	id = id/n;
 	int i = id % n;
+
+	if (enableTimer) {
+		switch (timerType) {
+			case 0:
+				clock_gettime(CLOCK_REALTIME, &start);
+				break;
+			case 1:
+				clock_gettime(CLOCK_MONOTONIC, &start);
+				break;
+			case 2:
+				clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+				break;
+			case 3:
+				clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+				break;
+		}
+	}
+
 	switch (lockType) {
 		// mutex
 		case 1:
@@ -300,6 +355,27 @@ void* row_col_sum(void* idp) {
 			c[i][j] += a[i][k]*b[k][j];
 			break;
 	}
+
+	if (enableTimer) {
+		switch (timerType) {
+			case 0:
+				clock_gettime(CLOCK_REALTIME, &end);
+				break;
+			case 1:
+				clock_gettime(CLOCK_MONOTONIC, &end);
+				break;
+			case 2:
+				clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+				break;
+			case 3:
+				clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+				break;
+		}
+
+		timespec_diff(&start, &end, &elapsed);
+		times[timesIndex] = elapsed;
+	}
+
 	if (!sequential)
 		pthread_exit(NULL);
 }
@@ -428,6 +504,9 @@ int main(int argc, char *argv[])
 		cout << "ok\t" << endl;
 	else
 		cout << "wrong\t" << endl;
+
+	if (enableTimer)
+		timerOutput();
 
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	
