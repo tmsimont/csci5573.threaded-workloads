@@ -1,21 +1,31 @@
 Busy process sitting to contend with workload
-	Can try multiple busy processes vs multiple busy threads
-	Workload runs and spits out metrics
-	Graph data
-	Vary priorities
-	Vary lock techniques
+Constant size (as large as possible)
+
+	Varied arguments:
+		Scheduling policy :
+			FIFO
+				Priority doesnt matter
+				Vary locking mechanism
+			RR
+				Figure out RT mode on linux
+					(Run multiple MM processes? Shell gets pre-empted? Maybe write a process launcher)
+					Run multiple MM's from bash script, showing that bash is pre-empted before subsequent launches
+				Vary locking mechanism
+			OTHER
+				Vary locking mechanism
+				Vary nice priority (-i -19 to 20)
+				http://www.ibm.com/support/knowledgecenter/linuxonibm/liaai.saptuning/saptuningadjust.htm
+
+	(look into timer types)
+
+	
+					
 
 Expect mutexes < sem < spin locks
 	Average waiting time
 
-
-Mess with the scheduler params:
-http://www.ibm.com/support/knowledgecenter/linuxonibm/liaai.saptuning/saptuningadjust.htm
-
-
 pthreads sys calls to tweak thread priority
 http://man7.org/linux/man-pages/man3/pthread_getschedparam.3.html
-
 
 sys calls to tweak process priority
 http://man7.org/linux/man-pages/man2/sched_setparam.2.html
