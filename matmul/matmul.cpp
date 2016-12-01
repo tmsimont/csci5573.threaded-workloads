@@ -361,22 +361,24 @@ void PrintMatrix(float **x)
 
 
 void recordAcquireTime(timespec *start, int timesIndex) {
-	timespec acquisition;
-	switch (timerType) {
-		case 0:
-			clock_gettime(CLOCK_REALTIME, &acquisition);
-			break;
-		case 1:
-			clock_gettime(CLOCK_MONOTONIC, &acquisition);
-			break;
-		case 2:
-			clock_gettime(CLOCK_MONOTONIC_RAW, &acquisition);
-			break;
-		case 3:
-			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &acquisition);
-			break;
+	if (enableTimer) {
+		timespec acquisition;
+		switch (timerType) {
+			case 0:
+				clock_gettime(CLOCK_REALTIME, &acquisition);
+				break;
+			case 1:
+				clock_gettime(CLOCK_MONOTONIC, &acquisition);
+				break;
+			case 2:
+				clock_gettime(CLOCK_MONOTONIC_RAW, &acquisition);
+				break;
+			case 3:
+				clock_gettime(CLOCK_THREAD_CPUTIME_ID, &acquisition);
+				break;
+		}
+		timespec_diff(start, &acquisition, acquireTimes[timesIndex]);
 	}
-	timespec_diff(start, &acquisition, acquireTimes[timesIndex]);
 }
 
 //------------------------------------------------------------------
