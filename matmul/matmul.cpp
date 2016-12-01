@@ -254,14 +254,14 @@ void timerOutput(timespec **tspecs)
 		// running avg of nanoseconds
 		msa += tspecs[i]->tv_nsec / N;
 
-		printf("Elapsed: %d.%09ld seconds in #%ld.\n", s, ms, i);
+		//printf("Elapsed: %d.%09ld seconds in #%ld.", s, ms, i);
 	}
 
 	int sas = sa;
 	float sasr = sa - sas;
 	msa = msa + (sasr * 1.0e9);
 
-	printf("Average thread time: %d.%09ld\n", sas, msa);
+	printf("%d.%09ld\t", sas, msa);
 }
 
 //-----------------------------------------------------------------------
@@ -594,12 +594,16 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (ok) 
-		cout << "ok\t" << endl;
+		cout << "ok\t";
 	else
-		cout << "wrong\t" << endl;
+		cout << "wrong\t";
 
-	if (enableTimer)
+	if (enableTimer) {
 		timerOutput(times);
+		timerOutput(acquireTimes);
+	}
+
+	cout << endl;
 
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	
