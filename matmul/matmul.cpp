@@ -62,12 +62,15 @@ pthread_attr_t attr;
 // nice stuff
 int niceness = 0;
 int niceSet = false;
+// policy
+int policy = 2;
 
 // debugging arg
 bool debug = false;
 
 // Timing stuff
 timespec **times;
+timespec **acquireTimes;
 int timerType = 0;
 bool enableTimer = true;
 
@@ -86,8 +89,12 @@ usage(char *prog_name, string msg)
 	fpe("-p<prio> Set scheduling priority in\n");
 	fpe("         thread attributes object\n");
 	fpe("-i<nice> Set nice value\n");
-	fpe("-m<prio> Set scheduling policy and priority on\n");
+	fpe("-m<prio> Set scheduling priority on\n");
 	fpe("         main thread before pthread_create() call\n");
+	fpe("-o<idx> Set scheduling policy:\n");
+	fpe("           0 : SCHED_RR\n");
+	fpe("           1 : SCHED_FIFO\n");
+	fpe("           2 : SCHED_OTHER\n");
 	fpe("-S       Don't use threads, perform sequentially \n");
 	fpe("-D       Print debug info \n");
 	fpe("-l<lock> Set locking mechanism used during matrix\n");
@@ -109,13 +116,14 @@ bool GetUserInput(int argc, char *argv[])
 {
 	int opt;
 	// read program args
-	while ((opt = getopt(argc, argv, "hDSn:i:l:p:m:t:T")) != -1) {
+	while ((opt = getopt(argc, argv, "hDSn:i:l:p:m:t:To:")) != -1) {
 		switch (opt) {
 			case 'p': priority = atoi(optarg);
 								prioritySet = true;						break;
 		  case 'i': niceness = atoi(optarg);					
 								niceSet = true;								break;
 			case 'm': mpriority = atoi(optarg);     break;
+			case 'o': policy = atoi(optarg);        break;
 			case 'D': debug = true;								  break;
 			case 'S': sequential = true;					  break;
 			case 'l': lockType = atoi(optarg);		  break;
@@ -138,6 +146,12 @@ bool GetUserInput(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	// check policy
+	if (policy > 2) {
+		cout << "Schedule policy must be less than 3" <<endl;
+		exit(EXIT_FAILURE);
+	}
+
 	if (prioritySet && mpriority < priority) {
 		cout << "TODO: Is it OK to run main thread with lower priority than children???" << endl;
 		exit(EXIT_FAILURE);
@@ -154,6 +168,18 @@ bool GetUserInput(int argc, char *argv[])
 		int s;
 		const struct sched_param const_pri = {priority};
 		const struct sched_param mconst_pri = {mpriority};
+		int lpolicy = SCHED_OTHER;
+		switch(policy) {
+			case 0:
+				lpolicy = SCHED_RR;
+				break;
+			case 1:
+				lpolicy = SCHED_FIFO;
+				break;
+			case 2:
+				lpolicy = SCHED_OTHER;
+				break;
+		}
 
 		// init attr
 		s = pthread_attr_init(&attr);
@@ -161,7 +187,7 @@ bool GetUserInput(int argc, char *argv[])
 			handle_error_en(s,"pthread_attr_init");
 
 		// set policy on attr (child threads)
-		s = pthread_attr_setschedpolicy(&attr,SCHED_RR);
+		s = pthread_attr_setschedpolicy(&attr,lpolicy);
 		if (s != 0)
 			handle_error_en(s, "pthread_attr_setschedpolicy");
 
@@ -171,7 +197,7 @@ bool GetUserInput(int argc, char *argv[])
 			handle_error_en(s, "pthread_attr_setschedparam");
 
 		// set priority and policy on parent thread
-		s = pthread_setschedparam(pthread_self(), SCHED_RR, &mconst_pri);
+		s = pthread_setschedparam(pthread_self(), lpolicy, &mconst_pri);
 		if (s != 0)
 			handle_error_en(s, "pthread_setschedparam");
 	}
@@ -203,23 +229,39 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
 
 void timerOutput()
 {
-	for (int i = 0; i < n*n*n; i++) {
+	long long msa = 0;
+	long long sa = 0;
+	int N = n*n*n;
+	for (int i = 0; i < N; i++) {
 		time_t s;
 		long ms;
 
 		s = times[i]->tv_sec;
+
+		sa += times[i]->tv_sec / N;
+		
 		// milliseconds
-		//ms = round(times[i]->tv_nsec / 1.0e6);
-		//printf("Elapsed: %d.%03ld seconds in #%ld.\n", s, ms, i);
+		// ms = round(times[i]->tv_nsec / 1.0e6);
+		// printf("Elapsed: %d.%03ld seconds in #%ld.\n", s, ms, i);
 
 		// microseconds
-		//ms = round(times[i]->tv_nsec / 1.0e3);
-		//printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
+		// ms = round(times[i]->tv_nsec / 1.0e3);
+		// printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
 
 		// nanoseconds
 		ms = times[i]->tv_nsec;
+
+		// running avg of nanoseconds
+		msa += times[i]->tv_nsec / N;
+
 		printf("Elapsed: %d.%09ld seconds in #%ld.\n", s, ms, i);
 	}
+
+	int sas = sa;
+	float sasr = sa - sas;
+	msa = msa + (sasr * 1.0e9);
+
+	printf("Average thread time: %d.%09ld\n", sas, msa);
 }
 
 //-----------------------------------------------------------------------
@@ -284,6 +326,11 @@ void InitializeMatrix(float** &x, float value)
 		for (int i = 0; i < n * n * n; i++) {
 			times[i] = new timespec();
 		}
+		// initialize lock acquisition timing structs
+		acquireTimes = new timespec *[n * n * n];
+		for (int i = 0; i < n * n * n; i++) {
+			acquireTimes[i] = new timespec();
+		}
 	}
 }
 
@@ -311,6 +358,27 @@ void PrintMatrix(float **x)
 		cout<<endl ;
 	}
 }
+
+
+void recordAcquireTime(timespec *start) {
+	timespec acquisition;
+	switch (timerType) {
+		case 0:
+			clock_gettime(CLOCK_REALTIME, &acquisition);
+			break;
+		case 1:
+			clock_gettime(CLOCK_MONOTONIC, &acquisition);
+			break;
+		case 2:
+			clock_gettime(CLOCK_MONOTONIC_RAW, &acquisition);
+			break;
+		case 3:
+			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &acquisition);
+			break;
+	}
+	timespec_diff(&start, &acquisition, acquireTimes[timesIndex]);
+}
+
 //------------------------------------------------------------------
 //Do Matrix Multiplication 
 //------------------------------------------------------------------
