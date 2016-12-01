@@ -19,6 +19,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 #define handle_error_en(en, msg) \
         do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -57,6 +59,10 @@ int priority = 0;
 int mpriority = 0;
 pthread_attr_t attr;
 
+// nice stuff
+int niceness = 0;
+int niceSet = false;
+
 // debugging arg
 bool debug = false;
 
@@ -79,6 +85,7 @@ usage(char *prog_name, string msg)
 	fpe("-n<size> Set matrix size\n");
 	fpe("-p<prio> Set scheduling priority in\n");
 	fpe("         thread attributes object\n");
+	fpe("-i<nice> Set nice value\n");
 	fpe("-m<prio> Set scheduling policy and priority on\n");
 	fpe("         main thread before pthread_create() call\n");
 	fpe("-S       Don't use threads, perform sequentially \n");
@@ -102,10 +109,12 @@ bool GetUserInput(int argc, char *argv[])
 {
 	int opt;
 	// read program args
-	while ((opt = getopt(argc, argv, "hDSn:l:p:m:t:T")) != -1) {
+	while ((opt = getopt(argc, argv, "hDSn:i:l:p:m:t:T")) != -1) {
 		switch (opt) {
 			case 'p': priority = atoi(optarg);
 								prioritySet = true;						break;
+		  case 'i': niceness = atoi(optarg);					
+								niceSet = true;								break;
 			case 'm': mpriority = atoi(optarg);     break;
 			case 'D': debug = true;								  break;
 			case 'S': sequential = true;					  break;
@@ -461,6 +470,11 @@ void MultiplyMatrix()
 					handle_error_en(s,"pthread_create1");
 			}
 			else {
+				if(niceSet)
+				{
+					nice(niceness);
+					cout <<"Nice"<<getpriority(PRIO_PROCESS,0)<<endl;
+				}
 				s = pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx));
 				if (s != 0)
 					handle_error_en(s,"pthread_create2");
