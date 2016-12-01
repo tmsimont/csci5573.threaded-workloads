@@ -219,7 +219,7 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
 	return;
 }
 
-void timerOutput()
+void timerOutput(timespec **tspecs)
 {
 	long long msa = 0;
 	long long sa = 0;
@@ -228,9 +228,9 @@ void timerOutput()
 		time_t s;
 		long ms;
 
-		s = times[i]->tv_sec;
+		s = tspecs[i]->tv_sec;
 
-		sa += times[i]->tv_sec / N;
+		sa += tspecs[i]->tv_sec / N;
 		
 		// milliseconds
 		// ms = round(times[i]->tv_nsec / 1.0e6);
@@ -241,10 +241,10 @@ void timerOutput()
 		// printf("Elapsed: %d.%06ld seconds in #%ld.\n", s, ms, i);
 
 		// nanoseconds
-		ms = times[i]->tv_nsec;
+		ms = tspecs[i]->tv_nsec;
 
 		// running avg of nanoseconds
-		msa += times[i]->tv_nsec / N;
+		msa += tspecs[i]->tv_nsec / N;
 
 		printf("Elapsed: %d.%09ld seconds in #%ld.\n", s, ms, i);
 	}
@@ -352,7 +352,7 @@ void PrintMatrix(float **x)
 }
 
 
-void recordAcquireTime(timespec *start) {
+void recordAcquireTime(timespec *start, int timesIndex) {
 	timespec acquisition;
 	switch (timerType) {
 		case 0:
@@ -368,7 +368,7 @@ void recordAcquireTime(timespec *start) {
 			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &acquisition);
 			break;
 	}
-	timespec_diff(&start, &acquisition, acquireTimes[timesIndex]);
+	timespec_diff(start, &acquisition, acquireTimes[timesIndex]);
 }
 
 //------------------------------------------------------------------
@@ -408,6 +408,7 @@ void* row_col_sum(void* idp) {
 		// mutex
 		case 1:
 			pthread_mutex_lock (&(cmutexes[i][j]));
+			recordAcquireTime(&start, timesIndex);
 			c[i][j] += a[i][k]*b[k][j];
 			pthread_mutex_unlock (&(cmutexes[i][j]));
 			break;
@@ -415,6 +416,7 @@ void* row_col_sum(void* idp) {
 		// semaphore
 		case 2:
 			sem_wait (&(sems[i][j]));
+			recordAcquireTime(&start, timesIndex);
 			c[i][j] += a[i][k]*b[k][j];
 			sem_post (&(sems[i][j]));
 			break;
@@ -422,6 +424,7 @@ void* row_col_sum(void* idp) {
 		// spin lock
 		case 3:
 			spinlock (spinlocks[i][j]);
+			recordAcquireTime(&start, timesIndex);
 			c[i][j] += a[i][k]*b[k][j];
 			spinunlock (spinlocks[i][j]);
 			break;
@@ -429,6 +432,7 @@ void* row_col_sum(void* idp) {
 		// no lock
 		case 4:
 		default:
+			recordAcquireTime(&start, timesIndex);
 			c[i][j] += a[i][k]*b[k][j];
 			break;
 	}
@@ -582,7 +586,7 @@ int main(int argc, char *argv[])
 		cout << "wrong\t" << endl;
 
 	if (enableTimer)
-		timerOutput();
+		timerOutput(times);
 
 	DeleteMatrix(a);	
 	DeleteMatrix(b);	
