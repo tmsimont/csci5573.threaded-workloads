@@ -5,5 +5,5 @@
 
 for i in `seq 1 $1`
 do
-	./matmul.out -l1 -n6 -o1 -m1 -p1
+	./matmul.out -l3 -n6 -o1 -m1 -p1
 done

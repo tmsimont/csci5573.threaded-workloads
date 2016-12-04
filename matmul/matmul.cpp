@@ -232,10 +232,19 @@ void timespec_diff(struct timespec *start, struct timespec *stop,
 	return;
 }
 
+void timerOutput(timespec *tspec)
+{
+		printf("%d.%09ld\t", tspec->tv_sec, tspec->tv_nsec);
+}
+
 void timerOutput(timespec **tspecs)
 {
 	long long msa = 0;
 	long long sa = 0;
+	long long maxt = 0;  
+	int maxs = 0;
+	int maxn = 0; 
+
 	int N = n*n*n;
 	for (int i = 0; i < N; i++) {
 		time_t s;
@@ -256,6 +265,13 @@ void timerOutput(timespec **tspecs)
 		// nanoseconds
 		ms = tspecs[i]->tv_nsec;
 
+		long long t = s + ms * 1.0e9;
+		if (t > maxt) {
+			maxt = t;
+			maxs = s;
+			maxn = ms;
+		}
+
 		// running avg of nanoseconds
 		msa += tspecs[i]->tv_nsec / N;
 
@@ -266,7 +282,12 @@ void timerOutput(timespec **tspecs)
 	float sasr = sa - sas;
 	msa = msa + (sasr * 1.0e9);
 
+	// avg
 	printf("%d.%09ld\t", sas, msa);
+
+
+	// max
+	printf("%d.%09ld\t", maxs, maxn);
 }
 
 //-----------------------------------------------------------------------
@@ -566,7 +587,7 @@ void MultiplyMatrix()
 //------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-	float runtime;
+	timespec start, end, runtime;
 
 	if (GetUserInput(argc,argv)==false) return 1;
 
@@ -575,11 +596,10 @@ int main(int argc, char *argv[])
 	InitializeMatrix(b,9.0);
 	InitializeMatrix(c,0.0);
 
-	runtime = clock()/(float)CLOCKS_PER_SEC;
-
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	MultiplyMatrix();
-
 	void *status;
+
 
 	if (!sequential)
 		for(int t=0; t<n*n*n; t++) {
@@ -591,7 +611,8 @@ int main(int argc, char *argv[])
 				handle_error_en(s, "pthread_join");
 		}
 
-	runtime = clock()/(float)CLOCKS_PER_SEC - runtime;
+	clock_gettime(CLOCK_MONOTONIC, &end);
+	timespec_diff(&start, &end, &runtime);
 
 	// check for errors in result
 	bool ok = true;
@@ -600,13 +621,18 @@ int main(int argc, char *argv[])
 			if (c[i][j] != c[0][0]) ok = false;
 		}
 	}
+
+	/*
 	if (ok) 
 		cout << "ok\t";
 	else
 		cout << "wrong\t";
+	*/
+	
 
 	if (enableTimer) {
-		timerOutput(times);
+		timerOutput(&runtime);
+		// timerOutput(times);
 		timerOutput(acquireTimes);
 	}
 
