@@ -24,13 +24,8 @@ using namespace std;
 
 void *busy_spin(void *idp) {
 	int id = (int)idp;
-
-	while(true) {
-	
-	}
-
+	while(true) { }
 	pthread_exit(NULL);
-
 }
 
 
@@ -67,16 +62,13 @@ int main(int argc, char *argv[])
 	}
 
 	pthread_t threads[num_threads];
-
 	for (int i = 0; i < num_threads; ++i) {
-	//	cout << "main() : creating thread, " << i << endl;
 		rc = pthread_create(&threads[i], NULL, busy_spin, (void *)i);
-
 		if (rc) {
-			cout << "Error:unable to create thread, " << rc << endl;			exit(-1);
+			cout << "Error:unable to create thread, " << rc << endl;
+			exit(-1);
 		}
 	}
-
 	pthread_exit(NULL);
 
 	return 0;
