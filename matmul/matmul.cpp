@@ -18,9 +18,12 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sched.h>
 #include <string>
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #define handle_error_en(en, msg) \
         do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
@@ -166,8 +169,10 @@ bool GetUserInput(int argc, char *argv[])
 	// set priority
 	if(prioritySet) {
 		int s;
-		const struct sched_param const_pri = {priority};
-		const struct sched_param mconst_pri = {mpriority};
+		struct sched_param const_pri;
+		const_pri.sched_priority = priority;
+		struct sched_param mconst_pri;
+		mconst_pri.sched_priority	= mpriority;
 		int lpolicy = SCHED_OTHER;
 		switch(policy) {
 			case 0:
