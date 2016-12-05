@@ -24,7 +24,7 @@ That matrix is then muliplied by itself, to form a new 3 * 3
 size result matrix.
 
 
-## Pthreads
+## Note on number of threads
 
 We use a completely unreasonable amount of threads to perform 
 the matrix multiplication.
@@ -37,7 +37,7 @@ us a situation where many threads are launched by one process,
 and then compete for resources. This is exactly what we need
 to expiriment with the Linux scheduler
 
-### Varied scheduling policy, lock options
+## Usage
 
 See `./matmul.out -h`
 ```
