@@ -1,2 +1,0 @@
-TIME="%e\t%S\t%U\t%P\t%c\t%w\t%M\t%t\t%k\t%Z\t%F\t%R"
-export TIME
