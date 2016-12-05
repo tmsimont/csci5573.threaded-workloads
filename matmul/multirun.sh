@@ -3,6 +3,8 @@
 # before running the next process
 # usage: ./multirun.sh [num times]
 
+echo "N	Thread Priority	Main Priority	Nice	Policy	Sequential	Lock Type	total	avg	max"
+
 # ---------------------------------------------------------------
 # SCHED_RR
 # ---------------------------------------------------------------
