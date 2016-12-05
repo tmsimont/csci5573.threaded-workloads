@@ -1,6 +1,7 @@
 #!/bin/bash
-# run the given problem x amount of times, waiting until program completion
-# before running the next process
+# run matmul permutations x amount of times,
+# waiting until program completion before 
+# running the next process
 # usage: ./multirun.sh [num times]
 
 echo "N	Thread Priority	Main Priority	Nice	Policy	Sequential	Lock Type	total	avg	max	"
