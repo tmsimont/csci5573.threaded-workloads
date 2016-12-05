@@ -1,4 +1,4 @@
-N	ThreadPriority	MainPriority	Nice	Policy	Sequential	LockType	total	avg	max
+N	ThreadPriority	MainPriority	Nice	Policy	Sequential	LockType	total	avg	max	
 6	1	1	-	SCHED_RR	0	MUTEX	0.033447719	0.000001106	0.000007135	
 6	1	1	-	SCHED_RR	0	SEMAPHORE	0.033442041	0.000001096	0.000008177	
 6	1	1	-	SCHED_RR	0	SPIN	0.031491214	0.000002904	0.000010000	
