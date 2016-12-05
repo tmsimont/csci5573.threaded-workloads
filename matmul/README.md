@@ -37,51 +37,45 @@ us a situation where many threads are launched by one process,
 and then compete for resources. This is exactly what we need
 to expiriment with the Linux scheduler
 
-### Mutex locks and Semaphores
+### Varied scheduling policy, lock options
 
-Both **mm-pthreads.semaphores.cpp** and **mm-pthreads.mutex.cpp** 
-contain the multi-threaded process described above.
+See `./matmul.out -h`
+```
+Usage: ./matmul.out [options]
+Options are:
+	-n<size> Set matrix size
+	-p<prio> Set scheduling priority in
+	         thread attributes object
+	-i<nice> Set nice value
+	-m<prio> Set scheduling priority on
+	         main thread before pthread_create() call
+	-o<idx> Set scheduling policy:
+	           0 : SCHED_RR
+	           1 : SCHED_FIFO
+	           2 : SCHED_OTHER
+	-S       Don't use threads, perform sequentially 
+	-D       Print debug info 
+	-l<lock> Set locking mechanism used during matrix
+	         updates. Options are:
+	           0 : No lock
+	           1 : Mutex
+	           2 : Semaphore
+	           3 : Spinlock
+	-t<tmr>  Set the timer type
+	           0 : CLOCK_REALTIME 
+	           1 : CLOCK_MONOTONIC 
+	           2 : CLOCK_MONOTONIC_RAW 
+	           3 : CLOCK_THREAD_CPUTIME_ID 
+	-T       Disable timing output
 
-The only difference is that one uses mutex locks, where the other
-uses semaphores.
+```
 
 
 ### multirun.sh
 
 ```
-usage: ./multirun [program index] [matrix size] [0 or 1 use lock] [num times]
+usage: ./multirun [times to run each permutation] > [outfile.tsv]
 ```
 
-This will run the given program X amount of times sequentially.
-
-The script will wait for one matrix multiply to complete before
-starting another process
-
-Valid indices for program selection:
-
-	0 : Sequential
-	1 : Mutex lock
-	2 : Semaphore
-
-
-### multirun-at_once.sh
-
-```
- usage: ./multirun-at_once [program index] [matrix size] [0 or 1 use lock] [num times] [outfile]
-```
-
-This will launch the given program X amount of times all at once.
-
-That means that X number of processes will be sent to the 
-scheduler to fight for CPU resources.
-
-See valid indices above for program selection.
-
-
-### matmul.out
-
-```
- usage: ./matmul.out -h
-```
-
-This will give you the usage of the program
+This will run the given program X amount of times for each permutation
+of program settings. This is how results are collected for our expirment.
