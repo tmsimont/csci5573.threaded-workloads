@@ -628,6 +628,66 @@ int main(int argc, char *argv[])
 	else
 		cout << "wrong\t";
 	*/
+
+	cout << n << "\t";
+
+	if (prioritySet) {
+		cout << priority << "\t";
+		cout << mpriority << "\t";
+	}
+	else {
+		cout << "-\t-\t";
+	}
+
+	if (niceSet) {
+		cout << niceness << "\t";
+	}
+	else {
+		cout << "-\t";
+	}
+
+	switch(policy) {
+		case 0:
+			cout << "SCHED_RR\t";
+			break;
+		case 1:
+			cout << "SCHED_FIFO\t";
+			break;
+		case 2:
+			cout << "SCHED_OTHER\t";
+			break;
+	}
+
+	if (sequential)
+		cout << "1\t";
+	else
+		cout << "0\t";
+
+
+	switch (lockType) {
+		// mutex
+		case 1:
+			cout << "MUTEX\t";
+			break;
+
+		// semaphore
+		case 2:
+			cout << "SEMAPHORE\t";
+			break;
+
+		// spin lock
+		case 3:
+			cout << "SPIN\t";
+			break;
+
+		// no lock
+		case 4:
+		default:
+			cout << "NONE\t";
+			break;
+	}
+
+
 	
 
 	if (enableTimer) {
