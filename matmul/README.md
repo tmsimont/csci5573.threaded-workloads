@@ -61,11 +61,11 @@ Options are:
 	           1 : Mutex
 	           2 : Semaphore
 	           3 : Spinlock
-	-t<tmr>  Set the timer type
+	-t<tmr>  Set the thread lock acquisition timer type
 	           0 : CLOCK_REALTIME 
 	           1 : CLOCK_MONOTONIC 
 	           2 : CLOCK_MONOTONIC_RAW 
-	           3 : CLOCK_THREAD_CPUTIME_ID 
+	           3 : (DEFAULT) CLOCK_THREAD_CPUTIME_ID 
 	-T       Disable timing output
 
 ```

@@ -74,7 +74,7 @@ bool debug = false;
 // Timing stuff
 timespec **times;
 timespec **acquireTimes;
-int timerType = 0;
+int timerType = 3;
 bool enableTimer = true;
 
 //-----------------------------------------------------------------------
@@ -106,11 +106,11 @@ usage(char *prog_name, string msg)
 	fpe("           1 : Mutex\n");
 	fpe("           2 : Semaphore\n");
 	fpe("           3 : Spinlock\n");
-	fpe("-t<tmr>  Set the timer type\n");
+	fpe("-t<tmr>  Set the thread lock acquisition timer type\n");
 	fpe("           0 : CLOCK_REALTIME \n");
 	fpe("           1 : CLOCK_MONOTONIC \n");
 	fpe("           2 : CLOCK_MONOTONIC_RAW \n");
-	fpe("           3 : CLOCK_THREAD_CPUTIME_ID \n");
+	fpe("           3 : (DEFAULT) CLOCK_THREAD_CPUTIME_ID \n");
 	fpe("-T       Disable timing output\n");
 	exit(EXIT_FAILURE);
 }
