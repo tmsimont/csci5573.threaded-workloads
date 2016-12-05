@@ -1,3 +1,7 @@
+##
+## Use to increase maximum number of threads
+##
+
 ulimit -s  256
 ulimit -i  120000
 echo 120000 > /proc/sys/kernel/threads-max
