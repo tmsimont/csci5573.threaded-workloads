@@ -573,7 +573,8 @@ void MultiplyMatrix()
 				if(niceSet)
 				{
 					nice(niceness);
-					cout <<"Nice"<<getpriority(PRIO_PROCESS,0)<<endl;
+					if (debug)
+						cout <<"Nice"<<getpriority(PRIO_PROCESS,0)<<endl;
 				}
 				s = pthread_create(&(threads[i]->t), NULL, row_col_sum, (void *) &(threads[i]->idx));
 				if (s != 0)
